@@ -43,17 +43,22 @@ func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
 	return n
 }
 
-func (n *Notifier) Send(msg Message) error {
+func (n *Notifier) Send(ctx context.Context, msg Message) error {
 	if n.closed.Load() {
 		return errors.New("notifier closed")
 	}
 
-	n.jobs <- msg
-	return nil
+	select {
+	case n.jobs <- msg:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (n *Notifier) Close() {
 	n.closed.Store(true)
+	n.cancel()
 	close(n.jobs)
 	n.wg.Wait()
 	n.limiter.Stop()
