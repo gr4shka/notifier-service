@@ -88,3 +88,23 @@ func TestRetry429(t *testing.T) {
 		t.Errorf("Expected Retries=2, got %d", stats.Retries)
 	}
 }
+
+func TestMaxRetriesExceeded(t *testing.T) {
+	client := &mockClient{maxFail: 10, failMode: "429"}
+
+	notifier := NewNotifier(client, 1, 100)
+	defer notifier.Close()
+
+	ctx := context.Background()
+	notifier.Send(ctx, Message{ID: "1", Payload: "test"})
+
+	time.Sleep(800 * time.Millisecond)
+
+	stats := notifier.GetStats()
+	if stats.Sent != 0 {
+		t.Errorf("Expected Sent=0, got %d", stats.Sent)
+	}
+	if stats.Failed != 1 {
+		t.Errorf("Expected Failed=1, got %d", stats.Failed)
+	}
+}
