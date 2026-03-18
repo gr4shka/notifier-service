@@ -3,6 +3,7 @@ package notifierservice
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -123,5 +124,34 @@ func TestClientError(t *testing.T) {
 	stats := notifier.GetStats()
 	if stats.Failed != 1 {
 		t.Errorf("Expected Failed=1, got %d", stats.Failed)
+	}
+}
+
+func TestConcurrentSends(t *testing.T) {
+	client := &mockClient{}
+	notifier := NewNotifier(client, 5, 1000)
+	defer notifier.Close()
+
+	numMessages := 50
+	var wg sync.WaitGroup
+
+	for i := 0; i < numMessages; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			ctx := context.Background()
+			notifier.Send(ctx, Message{
+				ID:      fmt.Sprintf("msg-%d", id),
+				Payload: "test",
+			})
+		}(i)
+	}
+
+	wg.Wait()
+	time.Sleep(500 * time.Millisecond)
+
+	stats := notifier.GetStats()
+	if stats.Sent != int64(numMessages) {
+		t.Errorf("Expected Sent=%d, got %d", numMessages, stats.Sent)
 	}
 }
