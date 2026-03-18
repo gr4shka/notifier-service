@@ -61,6 +61,10 @@ func (n *Notifier) Send(ctx context.Context, msg Message) error {
 
 func (n *Notifier) Close() {
 	n.closed.Store(true)
+
+	n.mu.Lock()
+	n.mu.Unlock()
+
 	n.cancel()
 	close(n.jobs)
 	n.wg.Wait()
