@@ -155,3 +155,42 @@ func TestConcurrentSends(t *testing.T) {
 		t.Errorf("Expected Sent=%d, got %d", numMessages, stats.Sent)
 	}
 }
+
+func TestRateLimiting(t *testing.T) {
+	client := &mockClient{}
+	notifier := NewNotifier(client, 1, 10)
+	defer notifier.Close()
+
+	ctx := context.Background()
+	for i := 0; i < 10; i++ {
+		notifier.Send(ctx, Message{ID: fmt.Sprintf("msg-%d", i), Payload: "test"})
+	}
+
+	time.Sleep(1200 * time.Millisecond)
+
+	stats := notifier.GetStats()
+	if stats.Sent != 10 {
+		t.Errorf("Expected Sent=10, got %d", stats.Sent)
+	}
+}
+
+func TestGracefulShutdown(t *testing.T) {
+	client := &mockClient{delay: 50 * time.Millisecond}
+	notifier := NewNotifier(client, 2, 100)
+
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		notifier.Send(ctx, Message{ID: fmt.Sprintf("msg-%d", i), Payload: "test"})
+	}
+
+	time.Sleep(300 * time.Millisecond)
+
+	notifier.Close()
+
+	stats := notifier.GetStats()
+	totalProcessed := stats.Sent + stats.Failed
+
+	if totalProcessed != 5 {
+		t.Errorf("Expected 5 total processed, got %d", totalProcessed)
+	}
+}
