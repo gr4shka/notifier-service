@@ -29,6 +29,9 @@ func (n *Notifier) workerLoop(ctx context.Context) {
 			case <-n.limiter.C:
 				n.processMessage(ctx, msg)
 			case <-ctx.Done():
+
+				n.processMessage(context.Background(), msg)
+				n.drainMessage()
 				return
 			}
 		}
