@@ -63,3 +63,7 @@ func (n *Notifier) Close() {
 	n.wg.Wait()
 	n.limiter.Stop()
 }
+
+func (n *Notifier) GetStats() Stats {
+	return n.stats.Snapshot()
+}
