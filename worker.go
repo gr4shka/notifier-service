@@ -48,7 +48,17 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 
 		status, err := n.client.Post(ctx, msg)
 
-		if err != nil || status == 429 {
+		if err != nil {
+			n.stats.IncFailed()
+			return
+		}
+
+		if status == 200 {
+			n.stats.IncSent()
+			return
+		}
+
+		if status == 429 {
 			if attempt < maxRetries {
 				n.stats.IncRetries()
 
@@ -66,7 +76,7 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 			return
 		}
 
-		n.stats.IncSent()
+		n.stats.IncFailed()
 		return
 	}
 }
