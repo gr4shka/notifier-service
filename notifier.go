@@ -35,6 +35,9 @@ func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
 		limiter: time.NewTicker(time.Second / time.Duration(rate)),
 	}
 
+	ctx := context.Background()
+	n.startWorkers(ctx)
+
 	return n
 }
 
