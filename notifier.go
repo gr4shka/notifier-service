@@ -72,13 +72,15 @@ func (n *Notifier) Send(ctx context.Context, msg Message) error {
 	}
 }
 
-func (n *Notifier) Close() {
+func (n *Notifier) Close() error {
 	n.once.Do(func() {
 		n.closed.Store(true)
 		n.cancel()
 		n.wg.Wait()
 		n.limiter.Stop()
 	})
+
+	return nil
 }
 
 func (n *Notifier) GetStats() Stats {
