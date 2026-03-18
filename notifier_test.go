@@ -194,3 +194,34 @@ func TestGracefulShutdown(t *testing.T) {
 		t.Errorf("Expected 5 total processed, got %d", totalProcessed)
 	}
 }
+
+func TestConcurrentSendAndClose(t *testing.T) {
+	client := &mockClient{delay: 50 * time.Millisecond}
+	notifier := NewNotifier(client, 2, 100)
+
+	ctx := context.Background()
+	var sendWg sync.WaitGroup
+	numMessages := 20
+
+	for i := 0; i < numMessages; i++ {
+		sendWg.Add(1)
+		go func(id int) {
+			defer sendWg.Done()
+			notifier.Send(ctx, Message{
+				ID:      fmt.Sprintf("msg-%d", id),
+				Payload: "test",
+			})
+		}(i)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	notifier.Close()
+	sendWg.Wait()
+
+	stats := notifier.GetStats()
+	totalProcessed := stats.Sent + stats.Failed
+
+	if totalProcessed > int64(numMessages) {
+		t.Errorf("Processed more than sent: %d", totalProcessed)
+	}
+}
