@@ -18,6 +18,7 @@ func (n *Notifier) workerLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			n.drainMessage()
 			return
 		case msg, ok := <-n.jobs:
 			if !ok {
@@ -78,5 +79,19 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 
 		n.stats.IncFailed()
 		return
+	}
+}
+
+func (n *Notifier) drainMessage() {
+	for {
+		select {
+		case msg, ok := <-n.jobs:
+			if !ok {
+				return
+			}
+			n.processMessage(context.Background(), msg)
+		default:
+			return
+		}
 	}
 }
