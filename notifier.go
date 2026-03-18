@@ -45,11 +45,11 @@ func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
 
 func (n *Notifier) Send(ctx context.Context, msg Message) error {
 	n.mu.Lock()
-	defer n.mu.Unlock()
 
 	if n.closed.Load() {
 		return errors.New("notifier closed")
 	}
+	n.mu.Unlock()
 
 	select {
 	case n.jobs <- msg:
