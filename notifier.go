@@ -2,7 +2,9 @@ package notifierservice
 
 import (
 	"context"
+	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,6 +24,8 @@ type Notifier struct {
 	limiter *time.Ticker
 	wg      sync.WaitGroup
 	cancel  context.CancelFunc
+	closed  atomic.Bool
+	ctx     context.Context
 	once    sync.Once
 	stats   Stats
 }
@@ -34,6 +38,7 @@ func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
 		workers: worker,
 		limiter: time.NewTicker(time.Second / time.Duration(rate)),
 		cancel:  cancel,
+		ctx:     ctx,
 	}
 
 	n.startWorkers(ctx)
@@ -41,16 +46,23 @@ func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
 }
 
 func (n *Notifier) Send(ctx context.Context, msg Message) error {
+	if n.closed.Load() {
+		return errors.New("notifier is closed")
+	}
+
 	select {
-	case n.jobs <- msg:
-		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-n.ctx.Done():
+		return errors.New("notifier is closed")
+	case n.jobs <- msg:
+		return nil
 	}
 }
 
 func (n *Notifier) Close() {
 	n.once.Do(func() {
+		n.closed.Store(true)
 		n.cancel()
 		n.wg.Wait()
 		n.limiter.Stop()
