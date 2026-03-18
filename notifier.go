@@ -31,6 +31,18 @@ type Notifier struct {
 }
 
 func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
+	if worker <= 0 {
+		worker = 1
+	}
+
+	if rate < 1 {
+		rate = 1
+	}
+
+	if rate > 1_000_000_000 {
+		rate = 1_000_000_00
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	n := &Notifier{
 		client:  client,
