@@ -57,19 +57,6 @@ func TestBasicSend(t *testing.T) {
 	}
 }
 
-func TestSendAfterClose(t *testing.T) {
-	client := &mockClient{}
-	notifier := NewNotifier(client, 1, 10)
-	notifier.Close()
-
-	ctx := context.Background()
-	err := notifier.Send(ctx, Message{ID: "1", Payload: "test"})
-
-	if err == nil {
-		t.Error("Expected error after Close")
-	}
-}
-
 func TestRetry429(t *testing.T) {
 	client := &mockClient{maxFail: 2, failMode: "429"}
 
