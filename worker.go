@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func (n *Notifier) StartWorkers(ctx context.Context) {
+func (n *Notifier) startWorkers(ctx context.Context) {
 	for i := 0; i < n.workers; i++ {
 		n.wg.Add(1)
 		go n.workerLoop(ctx)
