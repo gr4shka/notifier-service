@@ -63,10 +63,10 @@ func (n *Notifier) Close() {
 	n.closed.Store(true)
 
 	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	n.cancel()
 	close(n.jobs)
-	n.mu.Unlock()
 
 	n.wg.Wait()
 	n.limiter.Stop()
