@@ -38,7 +38,7 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 	maxRetries := 3
 	backoffBase := 100 * time.Millisecond
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt < maxRetries; attempt++ {
 		select {
 		case <-ctx.Done():
 			n.stats.IncFailed()
@@ -59,7 +59,7 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 		}
 
 		if status == 429 {
-			if attempt < maxRetries {
+			if attempt < maxRetries-1 {
 				n.stats.IncRetries()
 
 				select {
