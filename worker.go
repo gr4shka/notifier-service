@@ -18,6 +18,7 @@ func (n *Notifier) workerLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			n.drainMessage()
 			return
 		case msg, ok := <-n.jobs:
 			if !ok {
@@ -28,6 +29,9 @@ func (n *Notifier) workerLoop(ctx context.Context) {
 			case <-n.limiter.C:
 				n.processMessage(ctx, msg)
 			case <-ctx.Done():
+
+				n.processMessage(context.Background(), msg)
+				n.drainMessage()
 				return
 			}
 		}
@@ -38,7 +42,7 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 	maxRetries := 3
 	backoffBase := 100 * time.Millisecond
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt < maxRetries; attempt++ {
 		select {
 		case <-ctx.Done():
 			n.stats.IncFailed()
@@ -59,7 +63,7 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 		}
 
 		if status == 429 {
-			if attempt < maxRetries {
+			if attempt < maxRetries-1 {
 				n.stats.IncRetries()
 
 				select {
@@ -78,5 +82,19 @@ func (n *Notifier) processMessage(ctx context.Context, msg Message) {
 
 		n.stats.IncFailed()
 		return
+	}
+}
+
+func (n *Notifier) drainMessage() {
+	for {
+		select {
+		case msg, ok := <-n.jobs:
+			if !ok {
+				return
+			}
+			n.processMessage(context.Background(), msg)
+		default:
+			return
+		}
 	}
 }
