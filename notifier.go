@@ -24,20 +24,22 @@ type Notifier struct {
 	limiter *time.Ticker
 	wg      sync.WaitGroup
 	closed  atomic.Bool
+	cancel  context.CancelFunc
+	mu      sync.Mutex
 	stats   Stats
 }
 
 func NewNotifier(client ExternalClient, worker int, rate int) *Notifier {
+	ctx, cancel := context.WithCancel(context.Background())
 	n := &Notifier{
 		client:  client,
 		jobs:    make(chan Message, 1000),
 		workers: worker,
 		limiter: time.NewTicker(time.Second / time.Duration(rate)),
+		cancel:  cancel,
 	}
 
-	ctx := context.Background()
 	n.startWorkers(ctx)
-
 	return n
 }
 
